@@ -23,6 +23,8 @@ export default function RootLayout({
       <body
         className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased `}
       >
+        {/* The "AuthGuard" was not used here because of inconsistency in sign-in and sign-up,instead
+        we have used it by creating a route-group and assigning the children that way*/}
         <ClerkProvider>
           <Providers>{children}</Providers>
         </ClerkProvider>
