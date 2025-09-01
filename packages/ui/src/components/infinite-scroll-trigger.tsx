@@ -29,7 +29,7 @@ export const InfinitScrollTrigger = ({
   return (
     <div className={cn("flex w-full justify-center py-2", className)} ref={ref}>
       <Button
-        disabled={!canLoadMore || !isLoadingMore}
+        disabled={!canLoadMore || isLoadingMore}
         onClick={onLoadMore}
         size="sm"
         variant="ghost"
