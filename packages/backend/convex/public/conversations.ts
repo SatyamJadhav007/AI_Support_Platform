@@ -2,7 +2,8 @@ import { mutation, query } from "../_generated/server";
 import { components } from "../_generated/api";
 import { ConvexError, v } from "convex/values";
 import { supportAgent } from "../system/ai/agents/supportAgent";
-import { saveMessage } from "@convex-dev/agent";
+import { MessageDoc, saveMessage } from "@convex-dev/agent";
+import { paginationOptsValidator } from "convex/server";
 
 export const getOne = query({
   args: {
@@ -11,6 +12,7 @@ export const getOne = query({
   },
 
   handler: async (ctx, args) => {
+    // session validation function ...
     const session = await ctx.db.get(args.contactSessionId);
     if (!session || session.expiresAt < Date.now()) {
       throw new ConvexError({
@@ -18,7 +20,7 @@ export const getOne = query({
         message: "Invalid session",
       });
     }
-
+    // Getting the targeted conversation from the DB...
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) {
       throw new ConvexError({
@@ -28,6 +30,7 @@ export const getOne = query({
     }
 
     if (conversation.contactSessionId !== session._id) {
+      //current session match or not check..
       throw new ConvexError({
         code: "UNAUTHORIZED",
         message: "Incorrect session",
@@ -74,5 +77,59 @@ export const create = mutation({
       threadId,
     });
     return conversationId;
+  },
+});
+
+export const getMany = query({
+  args: {
+    contactSessionId: v.id("contactSessions"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    //contactSession validation
+    const contactSession = await ctx.db.get(args.contactSessionId);
+    if (!contactSession || contactSession.expiresAt < Date.now()) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid session",
+      });
+    }
+    // getting all the conversations from the contact session...
+    const conversations = await ctx.db
+      .query("conversations")
+      .withIndex("by_contact_session_id", (q) =>
+        q.eq("contactSessionId", args.contactSessionId)
+      )
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    // Mapping over all the conversation->fetching the last message from the messages and adding
+    // it to the return object to display it on the front-end
+    const conversationsWithLastMessage = await Promise.all(
+      conversations.page.map(async (conversation) => {
+        let lastMessage: MessageDoc | null = null;
+        // getting all the messages from the conversation
+        const messages = await supportAgent.listMessages(ctx, {
+          threadId: conversation.threadId,
+          paginationOpts: { numItems: 1, cursor: null },
+        });
+        if (messages.page.length > 0) {
+          lastMessage = messages.page[0] ?? null;
+        }
+        return {
+          _id: conversation._id,
+          _creationTime: conversation._creationTime,
+          status: conversation.status,
+          organizationId: conversation.organizationId,
+          threadId: conversation.threadId,
+          lastMessage,
+        };
+      })
+    );
+
+    return {
+      ...conversations,
+      page: conversationsWithLastMessage,
+    };
   },
 });
