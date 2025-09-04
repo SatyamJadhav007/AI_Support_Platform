@@ -85,6 +85,11 @@ export const create = mutation({
       });
     }
 
+    if (conversation.status === "escalated") {
+      await ctx.db.patch(args.conversationId, {
+        status: "escalated",
+      });
+    }
     await saveMessage(ctx, components.agent, {
       threadId: conversation.threadId,
       // TODO:Check if the agent name is needed or not...
