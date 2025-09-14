@@ -8,10 +8,11 @@ import {
   loadingMessageAtom,
   organizationIdAtom,
   screenAtom,
+  widgetSettingsAtom,
 } from "@/modules/widget/atoms/widget-atoms";
 import { WidgetHeader } from "@/modules/widget/ui/components/widget-header";
 import { useEffect, useState } from "react";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@workspace/backend/_generated/api";
 
 type InitStep = "storage" | "org" | "session" | "settings" | "vapi" | "done";
@@ -24,6 +25,7 @@ export const WidgetLoadingScreen = ({
   const [sessionValid, setSessionValid] = useState(false);
   const setErrorMessage = useSetAtom(errorMessageAtom);
   const setOrganizationId = useSetAtom(organizationIdAtom);
+  const setWidgetSettings = useSetAtom(widgetSettingsAtom);
   const setLoadingMessage = useSetAtom(loadingMessageAtom);
   const loadingMessage = useAtomValue(loadingMessageAtom);
   const setScreen = useSetAtom(screenAtom);
@@ -82,7 +84,7 @@ export const WidgetLoadingScreen = ({
     setLoadingMessage("Finding contact session ID...");
     if (!contactSessionId) {
       setSessionValid(false);
-      setStep("done");
+      setStep("settings");
       return;
     }
     setLoadingMessage("Validating Session");
@@ -92,14 +94,36 @@ export const WidgetLoadingScreen = ({
     })
       .then((result) => {
         setSessionValid(result.valid);
-        setStep("done");
+        setStep("settings");
       })
       .catch(() => {
         setSessionValid(false);
-        setStep("done");
+        setStep("settings");
       });
   }, [step, contactSessionId, validateContactSession, setLoadingMessage]);
 
+  // Step 3: Load Widget Settings
+
+  const WidgetSettings = useQuery(
+    api.public.widgetSettings.getByOrganizationId,
+    organizationId
+      ? {
+          organizationId,
+        }
+      : "skip"
+  );
+
+  useEffect(() => {
+    if (step !== "settings") {
+      return;
+    }
+
+    setLoadingMessage("Loading widget settings...");
+    if (WidgetSettings !== undefined && organizationId) {
+      setWidgetSettings(WidgetSettings);
+      setStep("done");
+    }
+  }, [step, setStep, WidgetSettings, setWidgetSettings, setLoadingMessage]);
   useEffect(() => {
     if (step !== "done") {
       return;
