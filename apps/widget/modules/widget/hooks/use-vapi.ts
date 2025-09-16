@@ -1,6 +1,8 @@
 import Vapi from "@vapi-ai/web";
+import { useAtomValue } from "jotai";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
+import { vapiSecretAtom, widgetSettingsAtom } from "../atoms/widget-atoms";
 
 interface TranscriptMessage {
   // role can be the user or assistant with the text data
@@ -17,10 +19,15 @@ export const useVapi = () => {
   //Boltoi(assistant sobat)...
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
+
+  const vapiSecrets = useAtomValue(vapiSecretAtom);
+  const widgetSettings = useAtomValue(widgetSettingsAtom);
   useEffect(() => {
-    // Only for testing the Vapi API, otherwise customers will provide their own API keys
-    // I.e. we will be white-labeling the vapi key 💀
-    const vapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_KEY || "");
+    if (!vapiSecrets) {
+      return;
+    }
+    // White-labeling done!!
+    const vapiInstance = new Vapi(vapiSecrets.publicApiKey);
     setVapi(vapiInstance);
     vapiInstance.on("call-start", () => {
       setIsConnected(true);
@@ -60,11 +67,12 @@ export const useVapi = () => {
   }, []);
 
   const startCall = () => {
+    if (!vapiSecrets || !widgetSettings?.vapiSettings?.assistantId) {
+      return;
+    }
     setIsConnecting(true);
     if (vapi) {
-      // Only for testing the Vapi API, otherwise customers will provide their own API keys
-      // I.e. we will be white-labeling the vapi key 💀
-      vapi.start("9b4d7728-10de-445b-aaeb-084ac586bbfc");
+      vapi.start(widgetSettings.vapiSettings.assistantId);
     }
   };
   const endCall = () => {
