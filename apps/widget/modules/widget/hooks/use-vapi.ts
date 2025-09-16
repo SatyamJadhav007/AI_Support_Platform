@@ -23,7 +23,8 @@ export const useVapi = () => {
   const vapiSecrets = useAtomValue(vapiSecretAtom);
   const widgetSettings = useAtomValue(widgetSettingsAtom);
   useEffect(() => {
-    if (!vapiSecrets) {
+    if (!vapiSecrets?.publicApiKey) {
+      setVapi(null);
       return;
     }
     // White-labeling done!!
@@ -62,7 +63,12 @@ export const useVapi = () => {
       }
     });
     return () => {
-      vapiInstance?.stop();
+      try {
+        vapiInstance?.stop();
+        vapiInstance.removeAllListeners?.();
+      } finally {
+        setVapi(null);
+      }
     };
   }, []);
 
