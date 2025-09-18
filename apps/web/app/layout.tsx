@@ -26,7 +26,13 @@ export default function RootLayout({
       >
         {/* The "AuthGuard" was not used here because of inconsistency in sign-in and sign-up,instead
         we have used it by creating a route-group and assigning the children that way*/}
-        <ClerkProvider>
+        <ClerkProvider
+          appearance={{
+            variables: {
+              colorPrimary: "#3C82F6",
+            },
+          }}
+        >
           <Providers>
             <Toaster />
             {children}
