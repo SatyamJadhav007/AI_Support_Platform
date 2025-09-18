@@ -49,8 +49,19 @@ export const create = action({
       });
     }
 
-    // TODO:Implement subscription check here later
-    const shouldTriggerAgent = conversation.status === "unresolved";
+    // This method refreshes the user's session if they are within the threshold limit..(i.e. 3hrs)
+    await ctx.runMutation(internal.system.contactSessions.refresh, {
+      contactSessionId: args.contactSessionId,
+    });
+    // TODO Completed!! Subscription check added!!
+    const subscription = await ctx.runQuery(
+      internal.system.subscriptions.getByOrganizationId,
+      {
+        organizationId: conversation.organizationId,
+      }
+    );
+    const shouldTriggerAgent =
+      conversation.status === "unresolved" && subscription?.status === "active";
     // This threadId right here is important,it helps in tracking the in-memory buffer messages of the agent via the ID
     if (shouldTriggerAgent) {
       await supportAgent.generateText(
